@@ -15,6 +15,17 @@ logging.basicConfig(
 logger = logging.getLogger()
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", help="threads/processes count", type=int, default=10)
+    parser.add_argument("-p", help="use processes in pool (default - threads)", action="store_true")
+    parser.add_argument("--no-shuffle", help="shuffle all jobs", action="store_true")
+    parser.add_argument("--head", help="show head of each response", action="store_true")
+    parser.add_argument("--output", help="show full response", action="store_true")
+    parser.add_argument("-j", help="parse json response", action="store_true")
+    parser.add_argument("-t", help="read timeout for requests", type=int, default=20)
+    return parser.parse_args()
+
 def make_request(params):
     result = {'status': None, 'time': None}
     try:
@@ -133,43 +144,5 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-n",
-        help="threads/processes count",
-        type=int,
-        default=10,
-    )
-    parser.add_argument(
-        "-p",
-        help="use processes in pool (default - threads)",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--no-shuffle",
-        help="shuffle all jobs",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--head",
-        help="show head of each response",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--output",
-        help="show full response",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-j",
-        help="parse json response",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-t",
-        help="read timeout for requests",
-        type=int,
-        default=20,
-    )
-    args = parser.parse_args()
+    args = parse_arguments()
     main(args)
