@@ -20,7 +20,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", help="threads/processes count", type=int, default=10, metavar='10')
     parser.add_argument("-p", help="use processes in pool (default - threads)", action="store_true")
-    parser.add_argument("--no-shuffle", help="shuffle all jobs", action="store_true")
+    parser.add_argument("--no-shuffle", help="do not shuffle all jobs", action="store_true")
     parser.add_argument("--head", help="show head of each response", action="store_true")
     parser.add_argument("--output", help="show full response", action="store_true")
     parser.add_argument("-j", help="parse json response", action="store_true")
@@ -83,7 +83,7 @@ def make_request(params):
             except Exception as e:
                 hits = repr(e)
 
-        if hits:
+        if read_json:
             log = f'{resp.status_code} {result["time"]:5.2f}s  [{hits}]  <{url}>'
         else:
             log = f'{resp.status_code} {result["time"]:5.2f}s  <{url}>'

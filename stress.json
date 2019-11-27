@@ -3,7 +3,7 @@
         "method": "GET",
         "url": "http://ya.ru/",
         "headers": {"Content-Type": "application/json"},
-        "filename": "1.py",
+        "filename": "payload.txt",
         "count": 20
     },
     {
