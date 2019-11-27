@@ -1,10 +1,10 @@
 [
     {
         "method": "GET",
-        "url": "http://127.1:9200/",
+        "url": "http://ya.ru/",
         "headers": {"Content-Type": "application/json"},
-        "data": "",
-        "count": 2
+        "filename": "1.py",
+        "count": 20
     },
     {
         "method": "GET",

@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import math
 import random
 import time
 from collections import Counter
@@ -17,35 +18,48 @@ logger = logging.getLogger()
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", help="threads/processes count", type=int, default=10)
+    parser.add_argument("-n", help="threads/processes count", type=int, default=10, metavar='10')
     parser.add_argument("-p", help="use processes in pool (default - threads)", action="store_true")
     parser.add_argument("--no-shuffle", help="shuffle all jobs", action="store_true")
     parser.add_argument("--head", help="show head of each response", action="store_true")
     parser.add_argument("--output", help="show full response", action="store_true")
     parser.add_argument("-j", help="parse json response", action="store_true")
-    parser.add_argument("-t", help="read timeout for requests", type=int, default=20)
-    parser.add_argument("-f", help="config filename", type=int, default='stress.json')
+    parser.add_argument("-t", help="read timeout for requests", type=int, default=20, metavar='20')
+    parser.add_argument("-f", help="config filename", type=str, default='stress.json', metavar='stress.json')
     return parser.parse_args()
+
+
+def shorter(line):
+    if len(line) > 80:
+        if '(' in line[:60]:
+            return line.split('(', 1)[0]
+        return line[:35] + '...' + line[-35:]
+    return line
+
+
+def percentile(values, percent):
+    size = len(values)
+    position = int(math.ceil((size * percent) / 100)) - 1
+    return sorted(values)[position] if len(values) >= position else -1.0
 
 
 def make_request(params):
     result = {'status': None, 'time': None}
+
+    settings = params.get('settings', {})
+    timeout = settings.get('t')
+    head = settings.get('head')
+    output = settings.get('output')
+    read_json = settings.get('j')
+
+    method = params.get('method', 'GET')
+    url = params.get('url')
+    headers = params.get('headers')
+    data = params.get('data')
+    if isinstance(data, dict):
+        data = json.dumps(data)
+
     try:
-        settings = params.get('settings', {})
-        timeout = settings.get('t')
-        head = settings.get('head')
-        output = settings.get('output')
-        read_json = settings.get('j')
-
-        method = params.get('method', 'GET')
-        url = params.get('url')
-        headers = params.get('headers')
-        data = (
-            params.get('data')
-            if isinstance(params.get('data'), dict)
-            else params.get('data')
-        )
-
         req_start_time = time.time()
         resp = requests.request(
             method=method,
@@ -55,6 +69,8 @@ def make_request(params):
             timeout=timeout,
         )
         req_end_time = time.time()
+        result['status'] = resp.status_code
+        result['time'] = req_end_time - req_start_time
 
         hits = None
         if read_json:
@@ -68,21 +84,21 @@ def make_request(params):
                 hits = repr(e)
 
         if hits:
-            log = f'{resp.status_code} [{hits}] <{url}>'
+            log = f'{resp.status_code} {result["time"]:5.2f}s  [{hits}]  <{url}>'
         else:
-            log = f'{resp.status_code} <{url}>'
+            log = f'{resp.status_code} {result["time"]:5.2f}s  <{url}>'
         if output:
             log += f'\n{resp.content}'
         elif head:
             log += f'\n{resp.content[:200]}'
 
         logger.info(log)
-
-        result['status'] = resp.status_code
-        result['time'] = req_end_time - req_start_time
+    except requests.exceptions.ConnectionError as e:
+        result['status'] = shorter(repr(e))
+        logger.error(f'ERR  {shorter(repr(e))}  <{url}>')
     except Exception as e:
         logger.exception(repr(e))
-        result['status'] = repr(e)
+        result['status'] = shorter(repr(e))
     return result
 
 
@@ -105,16 +121,14 @@ def main(args):
         count = job_json.get('count', 1)
 
         filename = job_json.get('filename')
-        body = job_json.get('body')
         if filename:
             with open(filename, 'rb') as f:
-                body = f.read()
+                job_json['data'] = f.read()
 
         for i in range(count):
             jobs.append(dict(
                 **job_json,
                 settings=settings,
-                body=body,
             ))
 
     if not args.no_shuffle:
@@ -130,17 +144,24 @@ def main(args):
     total_time = end_time - start_time
 
     statuses = Counter([r['status'] for r in results])
-    times = [r['time'] for r in results if r['time'] is not None]
+    times = [r['time'] for r in results if r['time'] is not None] or [-1.0]
 
     print(
         f'-----------------------------------------------------------------\n'
-        f'total {len(results)} requests in {total_time:.3} seconds\n'
-        f'min: {min(times):.3}s, '
-        f'max: {max(times):.3}s, '
-        f'avg: {sum(times)/len(times):.3}\n'
-        f'statuses:'
+        f'total {len(results)} requests in {total_time:.3f} seconds\n'
+        f'min: {min(times):.3f}, '
+        f'max: {max(times):.3f}, '
+        f'avg: {sum(times)/len(times):.3f}\n'
+        f'P50: {percentile(times, 50):.3f}, '
+        f'P90: {percentile(times, 90):.3f}, '
+        f'P95: {percentile(times, 95):.3f}, '
+        f'P99: {percentile(times, 99):.3f}\n'
+        f'\n'
+        f'============================ statuses ==========================='
     )
-    print('\n'.join([f'{x}: {statuses[x]}' for x in statuses]))
+    for x in statuses:
+        c = statuses[x]
+        print(f'{x:<20} {c:6}    ({c/len(results)*100:5.2f}%)')
     print('-----------------------------------------------------------------')
 
 
