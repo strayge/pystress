@@ -24,7 +24,9 @@ def parse_arguments():
     parser.add_argument("--output", help="show full response", action="store_true")
     parser.add_argument("-j", help="parse json response", action="store_true")
     parser.add_argument("-t", help="read timeout for requests", type=int, default=20)
+    parser.add_argument("-f", help="config filename", type=int, default='stress.json')
     return parser.parse_args()
+
 
 def make_request(params):
     result = {'status': None, 'time': None}
@@ -85,9 +87,8 @@ def make_request(params):
 
 
 def main(args):
-    global queue
     if args.p:
-        from multiprocessing import Pool, Queue
+        from multiprocessing import Pool
     else:
         from multiprocessing.pool import ThreadPool as Pool
 
@@ -95,25 +96,25 @@ def main(args):
 
     settings = dict(args.__dict__)
 
-    with open('stress.json', 'rt') as f:
+    with open(args.f, 'rt') as f:
         jobs_json = json.load(f)
 
     jobs = []
 
     for job_json in jobs_json:
-        method = job_json.get('method')
-        url = job_json.get('url')
-        headers = job_json.get('headers')
-        data = job_json.get('data')
         count = job_json.get('count', 1)
+
+        filename = job_json.get('filename')
+        body = job_json.get('body')
+        if filename:
+            with open(filename, 'rb') as f:
+                body = f.read()
 
         for i in range(count):
             jobs.append(dict(
-                method=method,
-                url=url,
-                headers=headers,
-                data=data,
+                **job_json,
                 settings=settings,
+                body=body,
             ))
 
     if not args.no_shuffle:
