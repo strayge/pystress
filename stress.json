@@ -3,14 +3,24 @@
         "method": "GET",
         "url": "http://ya.ru/",
         "headers": {"Content-Type": "application/json"},
-        "filename": "payload.txt",
-        "count": 20
+        "filename": "external_payload.txt",
+        "count": 2
     },
     {
         "method": "GET",
         "url": "http://127.1:9200/",
         "headers": {"Content-Type": "application/json"},
-        "data": {},
+        "data": "embedded payload (can be string or dictionary)",
         "count": 2
+    },
+    {
+        "method": "GET",
+        "url": "https://ggstats.strayge.com/viewers",
+        "count": 2
+    },
+    {
+        "method": "GET",
+        "url": "http://api2.goodgame.ru/info/test",
+        "count": 1
     }
 ]
